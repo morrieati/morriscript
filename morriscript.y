@@ -11,7 +11,6 @@
     ParameterList       *parameter_list;
     ArgumentList        *argument_list;
     Expression          *expression;
-    ExpressionList      *expression_list;
     Statement           *statement;
     StatementList       *statement_list;
     Block               *block;
@@ -24,20 +23,19 @@
 %token  <expression> DOUBLE_LITERAL
 %token  <expression> STRING_LITERAL
 %token  <identifier> IDENTIFIER
-%token  GLOBAL_T LET FUNCTION RETURN_T IF ELSE ELSIF TRUE_T FALSE_T NULL_T
-        FOR WHILE BREAK CONTINUE LP RP LB RB LC RC SEMICOLON COMMA CLOSURE
-        LOGICAL_AND LOGICAL_OR ASSIGN EQ NE GT GE LT LE ADD SUB MUL DIV MOD
+%token  GLOBAL_T LET FUNCTION CLASS RETURN_T IF ELSE ELSIF TRUE_T FALSE_T NULL_T
+        FOR WHILE BREAK CONTINUE LP RP LB RB LC RC SEMICOLON COMMA CLOSURE DOT
+        LOGICAL_AND LOGICAL_OR ASSIGN EQ NE GT GE LT LE ADD SUB MUL DIV MOD NEW
  /* 非终结符 */
 
 %type   <parameter_list> parameter_list
 %type   <argument_list> argument_list
 %type   <expression> expression expression_opt
-        assignment_expression logical_and_expression logical_or_expression
+        logical_and_expression logical_or_expression
         equality_expression relational_expression
         additive_expression multiplicative_expression
         unary_expression postfix_expression primary_expression array_literal
         closure_definition
-%type   <expression_list> expression_list
 %type   <statement> statement global_statement let_statement
         if_statement while_statement for_statement
         return_statement break_statement continue_statement
@@ -69,10 +67,20 @@ function_definition
         ms_create_function(MS_FALSE, $2, NULL, $5);
     }
     ;
+class_definition
+    : CLASS IDENTIFIER block
+    {
+        ms_create_class($2, $3);
+    }
+    ;
 parameter_list
     : LET IDENTIFIER
     {
         $$ = ms_create_parameter($2);
+    }
+    | LET IDENTIFIER LB RB
+    {
+        $$ = ms_create_parameter()
     }
     | LET IDENTIFIER COMMA parameter_list
     {
@@ -101,7 +109,7 @@ statement_list
     ;
 expression
     : logical_or_expression
-    | IDENTIFIER ASSIGN expression
+    | primary_expression ASSIGN expression
     {
         $$ = ms_create_assign_expression($1, $3);
     }
@@ -196,6 +204,14 @@ primary_expression
     {
         $$ = ms_create_function_call_expression($1, NULL);
     }
+    | IDENTIFIER DOT IDENTIFIER
+    {
+        $$ = ms_create_class_use_expression($1, $3);
+    }
+    | NEW IDENTIFIER LP RP
+    {
+        $$ = ms_create_class_new_expression($2);
+    }
     | LP expression RP
     {
         $$ = $2;
@@ -219,18 +235,7 @@ primary_expression
     {
         $$ = ms_create_null_expression();
     }
-    | array_literal
     | closure_definition
-    ;
-array_literal
-    : IDENTIFIER LC INT_LITERAL RC
-    {
-        $$ = ms_create_array_expression($1, $2, NULL);
-    }
-    | IDENTIFIER LC INT_LITERAL RC array_literal
-    {
-        $$ = ms_create_array_expression($1, $2, $4);
-    }
     ;
 closure_definition
     | LP parameter_list RP CLOSURE block
@@ -240,20 +245,6 @@ closure_definition
     | LP RP CLOSURE block
     {
         $$ = ms_create_closure_definition(NULL, $4);
-    }
-    ;
-expression_list
-    : /* empty */
-    {
-        $$ = NULL;
-    }
-    | assignment_expression
-    {
-        $$ = crb_create_expression_list($1);
-    }
-    | expression_list COMMA assignment_expression
-    {
-        $$ = crb_chain_expression_list($1, $3);
     }
     ;
 statement

@@ -54,8 +54,9 @@ typedef enum {
     LOGICAL_OR_EXPRESSION,
     MINUS_EXPRESSION,
     FUNCTION_CALL_EXPRESSION,
+    CLASS_USE_EXPRESSION,
+    CLASS_NEW_EXPRESSION,
     NULL_EXPRESSION,
-    ARRAY_EXPRESSION,
     CLOSURE_EXPRESSION,
     EXPRESSION_TYPE_COUNT_PLUS_1
 } ExpressionType;
@@ -85,12 +86,16 @@ typedef struct
     ArgumentList *argument;
 } FunctionCallExpression;
 
-typedef struct ArrayExpression_tag
+typedef struct
 {
     char *identifier;
-    int length;
-    struct ArrayExpression_tag *next;
-} ArrayExpression;
+    char *member;
+} ClassUseExpression;
+
+typedef struct
+{
+    char *identifier;
+} ClassNewExpression;
 
 typedef struct
 {
@@ -111,7 +116,8 @@ struct Expression_tag
         BinaryExpression binary_expression;
         Expression *minus_expression;
         FunctionCallExpression function_call_expression;
-        ArrayExpression array_literal;
+        ClassUseExpression class_use_expression;
+        ClassNewExpression class_new_expression;
         ClosureExpression closure;
     } u;
 };
@@ -243,9 +249,21 @@ typedef struct FunctionDefinition_tag
     struct FunctionDefinition_tag *next;
 } FunctionDefinition;
 
+typedef struct ClassDefinition_tag
+{
+    char *name;
+
+    Block *block;
+
+    int line_number;
+    struct ClassDefinition_tag *next;
+} ClassDefinition;
+
 typedef struct Variable_tag
 {
     char *name;
+    MS_Boolean isObject;
+    MS_Boolean isArray;
     MS_Value value;
     struct Variable_tag *next;
 } Variable;
@@ -295,6 +313,7 @@ typedef struct MS_Interpreter_tag
     Variable *variable;
     FunctionDefinition *function_list;
     StatementList *statement_list;
+    ClassDefinition *class_list;
     int current_line_number;
 } MS_Interpreter;
 
@@ -303,7 +322,8 @@ MS_Interpreter *ms_get_interpreter();
 MS_Interpreter *ms_create_interpreter();
 
 void ms_create_function(char *identifier, ParameterList *parameter_list, Block *block);
-ParameterList *ms_create_parameter(char *identifier);
+void ms_create_class(char *identifier, Block *block);
+ParameterList *ms_create_parameter(char *identifier, MS_Boolean isClass, MS_Boolean isArray);
 ParameterList *ms_chain_parameter(ParameterList *list, char *identifier);
 ArgumentList *ms_create_argument_list(Expression *expression);
 ArgumentList *ms_chain_argument_list(ArgumentList *list, Expression *expr);
@@ -321,7 +341,6 @@ Expression *ms_create_function_call_expression(char *func_name, ArgumentList *ar
 Expression *ms_create_boolean_expression(MS_Boolean value);
 Expression *ms_create_null_expression(void);
 Expression *ms_create_closure_definition(ParameterList *parameter_list, Block *block);
-Expression *ms_create_array_expression(char *identifier, int length, ArrayExpression arrExp);
 
 // Statement
 static Statement *ms_alloc_statement(StatementType type);

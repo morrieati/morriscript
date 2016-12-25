@@ -27,6 +27,12 @@
 <INITIAL>"function" {
     return FUNCTION;
 }
+<INITIAL>"class" {
+    return CLASS;
+}
+<INITIAL>"new" {
+    return NEW;
+}
 <INITIAL>"return" {
     return RETURN_T;
 }
@@ -133,6 +139,9 @@
 }
 <INITIAL>"=>" {
     return CLOSURE;
+}
+<INITIAL>"." {
+    return DOT;
 }
 
  /* 定义标识符 */

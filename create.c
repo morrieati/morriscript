@@ -35,10 +35,35 @@ void ms_create_function(MS_Boolean isClosure, char *identifier, ParameterList *p
     f->parameter = parameter_list;
     f->block = block;
     f->line_number = ms_get_interpreter()->current_line_number;
-    f->next = interpreter->function_list;
-    interpreter->function_list = f;
+    f->next = ms_get_interpreter()->function_list;
+    ms_get_interpreter()->function_list = f;
 }
-ParameterList *ms_create_parameter(char *identifier)
+
+void ms_create_class(char *identifier, Block *block)
+{
+    ClassDefinition *c;
+
+    c = (ClassDefinition *)malloc(sizeof(ClassDefinition));
+    c->name = identifier;
+    c->block = block;
+    c->line_number = ms_get_interpreter()->current_line_number;
+    c->next = ms_get_interpreter()->class_list;
+    ms_get_interpreter()->class_list = c;
+}
+
+void ms_create_variable(char *name, MS_Boolean isClass, MS_Boolean isArray)
+{
+    // Search name in Variable List, if exist, error.
+
+    Variable *v;
+    v = (Variable *)malloc(Variable);
+    v->isArray = isArray;
+    v->isObject = isObject;
+    v->next = ms_get_interpreter()->variable;
+    ms_get_interpreter()->variable = v;
+}
+
+ParameterList *ms_create_parameter(char *identifier, MS_Boolean isClass, MS_Boolean isArray)
 {
     ParameterList *pl;
 
@@ -46,6 +71,8 @@ ParameterList *ms_create_parameter(char *identifier)
     pl->name = identifier;
     pl->line_number = ms_get_interpreter()->current_line_number;
     pl->next = NULL;
+
+    ms_create_variable(identifier, isClass, isArray);
 
     return pl;
 }
@@ -118,8 +145,29 @@ Expression *ms_alloc_expression(ExpressionType type)
 
     return exp;
 }
-Expression *ms_create_assign_expression(char *variable, Expression *operand)
+Expression *ms_create_assign_expression(Expression *priExp, Expression *operand)
 {
+    if (priExp->type != IDENTIFIER_EXPRESSION || priExp->type != ARRAY_EXPRESSION)
+    {
+        // Error type 6: The left-hand side of an assignment must be a variable.
+        return NULL;
+    }
+
+    if (priExp->type == IDENTIFIER)
+    {
+        // Find IDENTIFIER in Variable list
+
+        if (operand->type == CLASS_NEW_EXPRESSION)
+        {
+            // set a class name and isObject value
+        }
+
+        if ((operand->type == INT_EXPRESSION || operand->type == DOUBLE_EXPRESSION))
+        {
+            // check type, if ok, give value
+        }
+    }
+
     Expression *exp;
 
     exp = ms_alloc_expression(ASSIGN_EXPRESSION);
@@ -175,6 +223,12 @@ Expression *ms_create_binary_expression(ExpressionType operator, Expression *lef
     // }
     // else
     // {
+
+    if (letf->type != right->type)
+    {
+        // Error type 7: Type mismatched for operands.
+    }
+
     Expression *exp;
 
     exp = ms_alloc_expression(operator);
@@ -209,6 +263,25 @@ Expression *ms_create_function_call_expression(char *func_name, ArgumentList *ar
     exp = ms_alloc_expression(FUNCTION_CALL_EXPRESSION);
     exp->u.function_call_expression.identifier = func_name;
     exp->u.function_call_expression.argument = argument;
+
+    return exp;
+}
+Expression *ms_create_class_use_expression(char *class_name, char *member)
+{
+    Expression *exp;
+
+    exp = ms_alloc_expression(CLASS_USE_EXPRESSION);
+    exp->u.class_use_expression.identifier = class_name;
+    exp->u.class_use_expression.member = member;
+
+    return exp;
+}
+Expression *ms_create_class_new_expression(char *class_name)
+{
+    Expression *exp;
+
+    exp = ms_alloc_expression(CLASS_NEW_EXPRESSION);
+    exp->u.class_use_expression.identifier = class_name;
 
     return exp;
 }
