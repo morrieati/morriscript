@@ -185,6 +185,13 @@ void ms_traverse_expression(Expression *expression, int blank)
             printf("(%d)\n", expression->line_number);
             ms_traverse_function_call_expression(expression->u.function_call_expression, blank);
             break;
+        case ARRAY_EXPRESSION:
+            printf("(%d)\n", expression->line_number);
+            break;
+        case CLOSURE_EXPRESSION:
+            printf("(%d)\n", expression->line_number);
+
+            break;
         default:
             break;
         }

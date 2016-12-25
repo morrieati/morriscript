@@ -16,7 +16,7 @@ MS_Interpreter *ms_create_interpreter()
     return interpreter;
 }
 
-void ms_create_function(char *identifier, ParameterList *parameter_list, Block *block)
+void ms_create_function(MS_Boolean isClosure, char *identifier, ParameterList *parameter_list, Block *block)
 {
     FunctionDefinition *f;
 
@@ -29,6 +29,7 @@ void ms_create_function(char *identifier, ParameterList *parameter_list, Block *
     // }
 
     f = (FunctionDefinition *)malloc(sizeof(FunctionDefinition));
+    f->isClosure = isClosure;
     f->name = identifier;
     f->type = MS_FUNCTION_DEFINITION;
     f->parameter = parameter_list;
@@ -36,19 +37,6 @@ void ms_create_function(char *identifier, ParameterList *parameter_list, Block *
     f->line_number = ms_get_interpreter()->current_line_number;
     f->next = interpreter->function_list;
     interpreter->function_list = f;
-}
-void ms_create_anonymous(ParameterList *parameter_list, Block *block)
-{
-    FunctionDefinition *a;
-
-    a = (FunctionDefinition *)malloc(sizeof(FunctionDefinition));
-    a->name = NULL;
-    a->type = MS_ANONYMOUS_DEFINITION;
-    a->parameter = parameter_list;
-    a->block = block;
-    a->line_number = ms_get_interpreter()->current_line_number;
-    a->next = interpreter->function_list;
-    interpreter->function_list = a;
 }
 ParameterList *ms_create_parameter(char *identifier)
 {
@@ -241,6 +229,26 @@ Expression *ms_create_null_expression(void)
 
     return exp;
 }
+Expression *ms_create_closure_definition(ParameterList *parameter_list, Block *block)
+{
+    Expression *exp;
+
+    exp = ms_alloc_expression(CLOSURE_EXPRESSION);
+    exp->u.closure.function_definition = ms_create_function(MS_TRUE, NULL, parameter_list, block);
+
+    return exp;
+}
+Expression *ms_create_array_expression(char *identifier, int length, ArrayExpression arrExp)
+{
+    Expression *exp;
+
+    exp = ms_alloc_expression(ARRAY_EXPRESSION);
+    exp->u.array_literal.identifier = identifier;
+    exp->u.array_literal.length = length;
+    exp->u.array_literal.next = arrExp;
+
+    return exp;
+}
 
 // Statement
 static Statement *ms_alloc_statement(StatementType type)
@@ -279,17 +287,7 @@ IdentifierList *ms_create_global_identifier(char *identifier, Expression *length
     i_list->name = identifier;
     i_list->line_number = ms_get_interpreter()->current_line_number;
     i_list->next = NULL;
-
-    if (length != NULL)
-    {
-        i_list->type = ARRAY_IDENTIFIER;
-        i_list->length = length->u.int_value;
-    }
-    else
-    {
-        i_list->type = VARIABLE_IDENTIFIER;
-        i_list->length = 0;
-    }
+    i_list->type = VARIABLE_IDENTIFIER;
 
     return i_list;
 }

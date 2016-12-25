@@ -11,6 +11,7 @@
     ParameterList       *parameter_list;
     ArgumentList        *argument_list;
     Expression          *expression;
+    ExpressionList      *expression_list;
     Statement           *statement;
     StatementList       *statement_list;
     Block               *block;
@@ -24,17 +25,19 @@
 %token  <expression> STRING_LITERAL
 %token  <identifier> IDENTIFIER
 %token  GLOBAL_T LET FUNCTION RETURN_T IF ELSE ELSIF TRUE_T FALSE_T NULL_T
-        FOR WHILE BREAK CONTINUE LP RP LB RB LC RC SEMICOLON COMMA ARROW
+        FOR WHILE BREAK CONTINUE LP RP LB RB LC RC SEMICOLON COMMA CLOSURE
         LOGICAL_AND LOGICAL_OR ASSIGN EQ NE GT GE LT LE ADD SUB MUL DIV MOD
  /* 非终结符 */
 
 %type   <parameter_list> parameter_list
 %type   <argument_list> argument_list
 %type   <expression> expression expression_opt
-        logical_and_expression logical_or_expression
+        assignment_expression logical_and_expression logical_or_expression
         equality_expression relational_expression
         additive_expression multiplicative_expression
-        unary_expression primary_expression
+        unary_expression postfix_expression primary_expression array_literal
+        closure_definition
+%type   <expression_list> expression_list
 %type   <statement> statement global_statement let_statement
         if_statement while_statement for_statement
         return_statement break_statement continue_statement
@@ -50,7 +53,6 @@ translation_unit
     ;
 definition_or_statement
     : function_definition
-    | anonymous_definition
     | statement
     {
         MS_Interpreter *inter = ms_get_interpreter();
@@ -60,25 +62,11 @@ definition_or_statement
 function_definition
     : FUNCTION IDENTIFIER LP parameter_list RP block
     {
-        ms_create_function($2, $4, $6);
+        ms_create_function(MS_FALSE, $2, $4, $6);
     }
     | FUNCTION IDENTIFIER LP RP block
     {
-        ms_create_function($2, NULL, $5);
-    }
-    ;
-anonymous_definition
-    : LP parameter_list RP ARROW block
-    {
-        ms_create_anonymous($2, $5);
-    }
-    | LP RP ARROW block
-    {
-        ms_create_anonymous(NULL, $4);
-    }
-    | error SEMICOLON
-    {
-        yyerrok;
+        ms_create_function(MS_FALSE, $2, NULL, $5);
     }
     ;
 parameter_list
@@ -231,6 +219,42 @@ primary_expression
     {
         $$ = ms_create_null_expression();
     }
+    | array_literal
+    | closure_definition
+    ;
+array_literal
+    : IDENTIFIER LC INT_LITERAL RC
+    {
+        $$ = ms_create_array_expression($1, $2, NULL);
+    }
+    | IDENTIFIER LC INT_LITERAL RC array_literal
+    {
+        $$ = ms_create_array_expression($1, $2, $4);
+    }
+    ;
+closure_definition
+    | LP parameter_list RP CLOSURE block
+    {
+        $$ = ms_create_closure_definition($2, $5);
+    }
+    | LP RP CLOSURE block
+    {
+        $$ = ms_create_closure_definition(NULL, $4);
+    }
+    ;
+expression_list
+    : /* empty */
+    {
+        $$ = NULL;
+    }
+    | assignment_expression
+    {
+        $$ = crb_create_expression_list($1);
+    }
+    | expression_list COMMA assignment_expression
+    {
+        $$ = crb_chain_expression_list($1, $3);
+    }
     ;
 statement
     : expression SEMICOLON
@@ -262,10 +286,6 @@ identifier_list
     : IDENTIFIER
     {
         $$ = ms_create_global_identifier($1, NULL);
-    }
-    | IDENTIFIER LB INT_LITERAL RB
-    {
-        $$ = ms_create_global_identifier($1, $3);
     }
     | identifier_list COMMA IDENTIFIER
     {

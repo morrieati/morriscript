@@ -132,7 +132,7 @@
     return MOD;
 }
 <INITIAL>"=>" {
-    return ARROW;
+    return CLOSURE;
 }
 
  /* 定义标识符 */

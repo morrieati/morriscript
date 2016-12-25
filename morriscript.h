@@ -30,28 +30,6 @@ typedef struct
     } u;
 } MS_Value;
 
-// 编译时错误
-typedef enum {
-    PARSE_ERR = 1,
-    CHARACTER_INVALID_ERR,
-    FUNCTION_MULTIPLE_DEFINE_ERR,
-    COMPILE_ERROR_COUNT_PLUS_1
-} CompileError;
-
-typedef enum {
-    INT_MESSAGE_ARGUMENT = 1,
-    DOUBLE_MESSAGE_ARGUMENT,
-    STRING_MESSAGE_ARGUMENT,
-    CHARACTER_MESSAGE_ARGUMENT,
-    POINTER_MESSAGE_ARGUMENT,
-    MESSAGE_ARGUMENT_END
-} MessageArgumentType;
-
-typedef struct
-{
-    char *format;
-} MessageFormat;
-
 typedef struct Expression_tag Expression;
 
 typedef enum {
@@ -77,6 +55,8 @@ typedef enum {
     MINUS_EXPRESSION,
     FUNCTION_CALL_EXPRESSION,
     NULL_EXPRESSION,
+    ARRAY_EXPRESSION,
+    CLOSURE_EXPRESSION,
     EXPRESSION_TYPE_COUNT_PLUS_1
 } ExpressionType;
 
@@ -105,6 +85,18 @@ typedef struct
     ArgumentList *argument;
 } FunctionCallExpression;
 
+typedef struct ArrayExpression_tag
+{
+    char *identifier;
+    int length;
+    struct ArrayExpression_tag *next;
+} ArrayExpression;
+
+typedef struct
+{
+    FunctionDefinition *function_definition;
+} ClosureExpression;
+
 struct Expression_tag
 {
     ExpressionType type;
@@ -119,6 +111,8 @@ struct Expression_tag
         BinaryExpression binary_expression;
         Expression *minus_expression;
         FunctionCallExpression function_call_expression;
+        ArrayExpression array_literal;
+        ClosureExpression closure;
     } u;
 };
 
@@ -139,7 +133,6 @@ typedef struct
 
 typedef enum {
     VARIABLE_IDENTIFIER = 1,
-    ARRAY_IDENTIFIER,
     IDENTIFIER_TYPE_COUNT_PLUS_1
 } IdentifierType;
 
@@ -149,7 +142,6 @@ typedef struct IdentifierList_tag
 
     char *name;
     int line_number;
-    int length;
     struct IdentifierList_tag *next;
 } IdentifierList;
 
@@ -235,13 +227,13 @@ typedef struct ParameterList_tag
 
 typedef enum {
     MS_FUNCTION_DEFINITION = 1,
-    MS_ANONYMOUS_DEFINITION
 } FunctionDefinitionType;
 
 typedef struct FunctionDefinition_tag
 {
     char *name;
     FunctionDefinitionType type;
+    MS_Boolean isClosure;
 
     ParameterList *parameter;
     Block *block;
@@ -311,7 +303,6 @@ MS_Interpreter *ms_get_interpreter();
 MS_Interpreter *ms_create_interpreter();
 
 void ms_create_function(char *identifier, ParameterList *parameter_list, Block *block);
-void ms_create_anonymous(ParameterList *parameter_list, Block *block);
 ParameterList *ms_create_parameter(char *identifier);
 ParameterList *ms_chain_parameter(ParameterList *list, char *identifier);
 ArgumentList *ms_create_argument_list(Expression *expression);
@@ -329,6 +320,8 @@ Expression *ms_create_identifier_expression(char *identifier);
 Expression *ms_create_function_call_expression(char *func_name, ArgumentList *argument);
 Expression *ms_create_boolean_expression(MS_Boolean value);
 Expression *ms_create_null_expression(void);
+Expression *ms_create_closure_definition(ParameterList *parameter_list, Block *block);
+Expression *ms_create_array_expression(char *identifier, int length, ArrayExpression arrExp);
 
 // Statement
 static Statement *ms_alloc_statement(StatementType type);
