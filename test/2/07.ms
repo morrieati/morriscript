@@ -5,4 +5,4 @@ function main()
     10 + j;
 }
 
-// Error type 7 at Line 4: Type mismatched for operands.
+// Error type 7 at Line 5: Type mismatched for operands.

@@ -185,12 +185,18 @@ void ms_traverse_expression(Expression *expression, int blank)
             printf("(%d)\n", expression->line_number);
             ms_traverse_function_call_expression(expression->u.function_call_expression, blank);
             break;
-        case ARRAY_EXPRESSION:
-            printf("(%d)\n", expression->line_number);
+        case ARRAY_USE_EXPRESSION:
+            ms_traverse_array_use_expression(expression->u.array_use_expression, blank);
             break;
         case CLOSURE_EXPRESSION:
             printf("(%d)\n", expression->line_number);
 
+            break;
+        case CLASS_NEW_EXPRESSION:
+            ms_traverse_class_new_expression(expression->u.class_new_expression, blank);
+            break;
+        case CLASS_USE_EXPRESSION:
+            ms_traverse_class_use_expression(expression->u.class_use_expression, blank);
             break;
         default:
             break;
@@ -277,8 +283,103 @@ void ms_traverse_identifier_list(IdentifierList *idList, int blank)
     }
 }
 
+void ms_traverse_class_new_expression(ClassNewExpression cnExp, int blank)
+{
+    ClassDefinition *cl = ms_get_interpreter()->class_list;
+    ClassDefinition *p = cl;
+
+    while (p != NULL)
+    {
+        if (strcmp(p->name, cnExp.identifier) == 0)
+        {
+            break;
+        }
+        p = p->next;
+    }
+
+    if (p == NULL)
+    {
+        printf("Error type 17 at Line %d: Undefined class \"%s\"\n", ms_get_interpreter()->current_line_number, cnExp.identifier);
+    }
+}
+void ms_traverse_class_use_expression(ClassUseExpression cuExp, int blank)
+{
+    Variable *vl = ms_get_interpreter()->variable;
+    Variable *p = vl;
+
+    while (p != NULL)
+    {
+        if (strcmp(p->name, cuExp.identifier) == 0)
+        {
+            if (p->isObject == MS_FALSE)
+            {
+                printf("Error type 13 at Line %d: Illegal use of \".\"\n", ms_get_interpreter()->current_line_number);
+            }
+            else
+            {
+                printf("Error type 14 at Line %d: Non-existent field \"%s\"\n", ms_get_interpreter()->current_line_number, cuExp.member);
+            }
+            break;
+        }
+        p = p->next;
+    }
+}
+
 void ms_traverse_assign_expression(AssignExpression asnExp, int blank)
 {
+    // Find IDENTIFIER in Variable list
+    Variable *vl = ms_get_interpreter()->variable;
+
+    Variable *p = vl;
+
+    while (p != NULL)
+    {
+        if (strcmp(p->name, asnExp.variable) == 0)
+        {
+            if (asnExp.operand->type == CLASS_NEW_EXPRESSION)
+            {
+                // set a class name and isObject value
+            }
+
+            if ((asnExp.operand->type == INT_EXPRESSION || asnExp.operand->type == DOUBLE_EXPRESSION))
+            {
+                // check type, if ok, give value
+                if (p->value.type == MS_NULL_VALUE)
+                {
+                    if (asnExp.operand->type == INT_EXPRESSION)
+                    {
+                        p->value.type = MS_INT_VALUE;
+                        p->value.u.int_value = asnExp.operand->u.int_value;
+                    }
+                    else
+                    {
+                        p->value.type = MS_DOUBLE_VALUE;
+                        p->value.u.double_value = asnExp.operand->u.double_value;
+                    }
+                }
+                if (p->value.type == MS_INT_VALUE && asnExp.operand->type == INT_EXPRESSION)
+                {
+                    p->value.u.int_value = asnExp.operand->u.int_value;
+                }
+                else if (p->value.type == MS_DOUBLE_VALUE && asnExp.operand->type == DOUBLE_EXPRESSION)
+                {
+                    p->value.u.double_value = asnExp.operand->u.double_value;
+                }
+                else
+                {
+                    printf("Error type 5 at Line %d: Type missmatched for assignment.\n", ms_get_interpreter()->current_line_number);
+                }
+            }
+            break;
+        }
+        p = p->next;
+    }
+
+    if (p == NULL)
+    {
+        printf("Error type 1 at Line %d: Undefined variable \"%s\".\n", ms_get_interpreter()->current_line_number, asnExp.variable);
+    }
+
     create_blank(blank + 2);
     printf("Variable: %s\n", asnExp.variable);
     ms_traverse_expression(asnExp.operand, blank + 2);
@@ -292,9 +393,89 @@ void ms_traverse_binary_expression(BinaryExpression binExp, int blank)
 }
 void ms_traverse_function_call_expression(FunctionCallExpression funcCall, int blank)
 {
+    FunctionDefinition *fd = ms_get_interpreter()->function_list;
+    FunctionDefinition *p = fd;
+
+    while (p != NULL)
+    {
+        if (strcmp(p->name, funcCall.identifier) == 0)
+        {
+            break;
+        }
+        p = p->next;
+    }
+    if (p == NULL)
+    {
+        Variable *vl = ms_get_interpreter()->variable;
+        Variable *v = vl;
+        while (v != NULL)
+        {
+            if (strcmp(v->name, funcCall.identifier) == 0)
+            {
+                break;
+            }
+            v = v->next;
+        }
+        if (v != NULL)
+        {
+            printf("Error type 11 at Line %d: \"%s\" is not a function.\n", ms_get_interpreter()->current_line_number, funcCall.identifier);
+        }
+        else
+        {
+            printf("Error type 2 at Line %d: Undefined function \"%s\".\n", ms_get_interpreter()->current_line_number, funcCall.identifier);
+        }
+    }
+    else
+    {
+        ArgumentList *al = funcCall.argument;
+        ParameterList *pl = p->parameter;
+
+        int pn = 0;
+        int an = 0;
+        while (pl != NULL)
+        {
+            pn++;
+            pl = pl->next;
+        }
+        while (al != NULL)
+        {
+            an++;
+            al = al->next;
+        }
+        if (pn != an)
+        {
+            printf("Error type 9 at Line %d: Function \"%s\" is not applicable for arguments.\n", ms_get_interpreter()->current_line_number, funcCall.identifier);
+        }
+    }
+
     create_blank(blank);
     printf("CALL: %s\n", funcCall.identifier);
     ms_traverse_argument_list(funcCall.argument, blank + 2);
+}
+
+void ms_traverse_array_use_expression(ArrayUseExpression arrUse, int blank)
+{
+    Variable *vl = ms_get_interpreter()->variable;
+    Variable *p = vl;
+    while (p != NULL)
+    {
+        if (strcmp(p->name, arrUse.identifier) == 0)
+        {
+            break;
+        }
+        p = p->next;
+    }
+    if (p == NULL)
+    {
+        printf("Error type 1 at Line %d: Undefined variable \"%s\".\n", ms_get_interpreter()->current_line_number, arrUse.identifier);
+    }
+    else
+    {
+        if (p->isArray == MS_FALSE)
+        {
+            printf("Error type 10 at Line %d: \"%s\" is not an array.\n", ms_get_interpreter()->current_line_number, arrUse.identifier);
+        }
+    }
 }
 
 void ms_traverse_if_statement(IfStatement ifStmt, int blank)
@@ -331,3 +512,5 @@ void create_blank(int blank)
         printf(" ");
     }
 }
+
+// 调用数组检查

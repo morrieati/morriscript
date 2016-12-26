@@ -105,6 +105,11 @@ typedef struct
     FunctionDefinition *function_definition;
 } ClosureExpression;
 
+typedef struct
+{
+    char *identifier;
+} ArrayUseExpression;
+
 struct Expression_tag
 {
     ExpressionType type;
@@ -119,6 +124,7 @@ struct Expression_tag
         BinaryExpression binary_expression;
         Expression *minus_expression;
         FunctionCallExpression function_call_expression;
+        ArrayUseExpression array_use_expression;
         ClassUseExpression class_use_expression;
         ClassNewExpression class_new_expression;
         ClosureExpression closure;
@@ -151,6 +157,8 @@ typedef struct IdentifierList_tag
 
     char *name;
     int line_number;
+    MS_Boolean isObject;
+    MS_Boolean isArray;
     struct IdentifierList_tag *next;
 } IdentifierList;
 
@@ -326,6 +334,7 @@ MS_Interpreter *ms_create_interpreter();
 
 void ms_create_function(MS_Boolean isClosure, char *identifier, ParameterList *parameter_list, Block *block);
 void ms_create_class(char *identifier, Block *block);
+void ms_create_variable(char *name, MS_Boolean isObject, MS_Boolean isArray);
 ParameterList *ms_create_parameter(char *identifier, MS_Boolean isObject, MS_Boolean isArray);
 ParameterList *ms_chain_parameter(char *identifier, ParameterList *list);
 ArgumentList *ms_create_argument_list(Expression *expression);
@@ -343,13 +352,16 @@ Expression *ms_create_identifier_expression(char *identifier);
 Expression *ms_create_function_call_expression(char *func_name, ArgumentList *argument);
 Expression *ms_create_boolean_expression(MS_Boolean value);
 Expression *ms_create_null_expression(void);
+Expression *ms_create_array_use_expression(char *identifier, Expression *priExp);
+Expression *ms_create_class_use_expression(char *class_name, char *member);
+Expression *ms_create_class_new_expression(char *class_name);
 Expression *ms_create_closure_definition(ParameterList *parameter_list, Block *block);
 
 // Statement
 static Statement *ms_alloc_statement(StatementType type);
 Statement *ms_create_global_statement(IdentifierList *identifier_list);
 Statement *ms_create_let_statement(IdentifierList *identifier_list);
-IdentifierList *ms_create_global_identifier(char *identifier, Expression *length);
+IdentifierList *ms_create_global_identifier(char *identifier, MS_Boolean isObject, MS_Boolean isArray);
 IdentifierList *ms_chain_identifier(IdentifierList *list, char *identifier);
 Statement *ms_create_if_statement(Expression *condition, Block *then_block, Elsif *elsif_list, Block *else_block);
 Elsif *ms_chain_elsif_list(Elsif *list, Elsif *add);
@@ -387,6 +399,9 @@ void ms_traverse_if_statement(IfStatement ifStmt, int blank);
 void ms_traverse_while_statement(WhileStatement whileStmt, int blank);
 void ms_traverse_for_statement(ForStatement forStmt, int blank);
 void ms_traverse_return_statement(ReturnStatement returnStmt, int blank);
+void ms_traverse_array_use_expression(ArrayUseExpression arrUse, int blank);
+void ms_traverse_class_new_expression(ClassNewExpression cnExp, int blank);
+void ms_traverse_class_use_expression(ClassUseExpression cuExp, int blank);
 void create_blank(int blank);
 
 #endif /* PRIVATE_CROWBAR_H_INCLUDED */

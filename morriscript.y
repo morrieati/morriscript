@@ -78,10 +78,6 @@ parameter_list
     {
         $$ = ms_create_parameter($2, MS_FALSE, MS_FALSE);
     }
-    | LET IDENTIFIER LB RB
-    {
-        $$ = ms_create_parameter($2, MS_FALSE, MS_TRUE);
-    }
     | LET IDENTIFIER COMMA parameter_list
     {
         $$ = ms_chain_parameter($2, $4);
@@ -280,7 +276,11 @@ let_statement
 identifier_list
     : IDENTIFIER
     {
-        $$ = ms_create_global_identifier($1, NULL);
+        $$ = ms_create_global_identifier($1, MS_FALSE, MS_FALSE);
+    }
+    | IDENTIFIER LB INT_LITERAL RB
+    {
+        $$ = ms_create_global_identifier($1, MS_FALSE, MS_TRUE);
     }
     | identifier_list COMMA IDENTIFIER
     {
