@@ -12,4 +12,4 @@ function main()
 {
 }
 
-// Error type 4 at Lne 6: Redefined function "func";
+// Error type 4 at Line 6: Redefined function "func";

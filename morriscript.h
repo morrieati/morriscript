@@ -54,6 +54,7 @@ typedef enum {
     LOGICAL_OR_EXPRESSION,
     MINUS_EXPRESSION,
     FUNCTION_CALL_EXPRESSION,
+    ARRAY_USE_EXPRESSION,
     CLASS_USE_EXPRESSION,
     CLASS_NEW_EXPRESSION,
     NULL_EXPRESSION,
@@ -96,6 +97,8 @@ typedef struct
 {
     char *identifier;
 } ClassNewExpression;
+
+typedef struct FunctionDefinition_tag FunctionDefinition;
 
 typedef struct
 {
@@ -321,10 +324,10 @@ static MS_Interpreter *interpreter;
 MS_Interpreter *ms_get_interpreter();
 MS_Interpreter *ms_create_interpreter();
 
-void ms_create_function(char *identifier, ParameterList *parameter_list, Block *block);
+void ms_create_function(MS_Boolean isClosure, char *identifier, ParameterList *parameter_list, Block *block);
 void ms_create_class(char *identifier, Block *block);
-ParameterList *ms_create_parameter(char *identifier, MS_Boolean isClass, MS_Boolean isArray);
-ParameterList *ms_chain_parameter(ParameterList *list, char *identifier);
+ParameterList *ms_create_parameter(char *identifier, MS_Boolean isObject, MS_Boolean isArray);
+ParameterList *ms_chain_parameter(char *identifier, ParameterList *list);
 ArgumentList *ms_create_argument_list(Expression *expression);
 ArgumentList *ms_chain_argument_list(ArgumentList *list, Expression *expr);
 StatementList *ms_create_statement_list(Statement *statement);
@@ -332,7 +335,7 @@ StatementList *ms_chain_statement_list(StatementList *list, Statement *statement
 
 // Expression
 Expression *ms_alloc_expression(ExpressionType type);
-Expression *ms_create_assign_expression(char *variable, Expression *operand);
+Expression *ms_create_assign_expression(Expression *priExp, Expression *operand);
 Expression convert_value_to_expression(MS_Value *v);
 Expression *ms_create_binary_expression(ExpressionType operator, Expression *left, Expression *right);
 Expression *ms_create_minus_expression(Expression *operand);

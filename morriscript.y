@@ -34,8 +34,7 @@
         logical_and_expression logical_or_expression
         equality_expression relational_expression
         additive_expression multiplicative_expression
-        unary_expression postfix_expression primary_expression array_literal
-        closure_definition
+        unary_expression primary_expression closure_definition
 %type   <statement> statement global_statement let_statement
         if_statement while_statement for_statement
         return_statement break_statement continue_statement
@@ -51,6 +50,7 @@ translation_unit
     ;
 definition_or_statement
     : function_definition
+    | class_definition
     | statement
     {
         MS_Interpreter *inter = ms_get_interpreter();
@@ -76,15 +76,15 @@ class_definition
 parameter_list
     : LET IDENTIFIER
     {
-        $$ = ms_create_parameter($2);
+        $$ = ms_create_parameter($2, MS_FALSE, MS_FALSE);
     }
     | LET IDENTIFIER LB RB
     {
-        $$ = ms_create_parameter()
+        $$ = ms_create_parameter($2, MS_FALSE, MS_TRUE);
     }
     | LET IDENTIFIER COMMA parameter_list
     {
-        $$ = ms_chain_parameter($4, $2);
+        $$ = ms_chain_parameter($2, $4);
     }
     ;
 argument_list
@@ -204,6 +204,10 @@ primary_expression
     {
         $$ = ms_create_function_call_expression($1, NULL);
     }
+    | IDENTIFIER LB primary_expression RB
+    {
+        $$ = ms_create_array_use_expression($1, $3);
+    }
     | IDENTIFIER DOT IDENTIFIER
     {
         $$ = ms_create_class_use_expression($1, $3);
@@ -238,7 +242,7 @@ primary_expression
     | closure_definition
     ;
 closure_definition
-    | LP parameter_list RP CLOSURE block
+    : LP parameter_list RP CLOSURE block
     {
         $$ = ms_create_closure_definition($2, $5);
     }

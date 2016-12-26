@@ -1,4 +1,5 @@
 #include "morriscript.h"
+
 MS_Interpreter *ms_get_interpreter()
 {
     return interpreter;
@@ -27,6 +28,18 @@ void ms_create_function(MS_Boolean isClosure, char *identifier, ParameterList *p
     //                       MESSAGE_ARGUMENT_END);
     //     return;
     // }
+    FunctionDefinition *fl = ms_get_interpreter()->function_list;
+    FunctionDefinition *p = fl;
+
+    while (p != NULL)
+    {
+        if (strcmp(p->name, identifier) == 0 && isClosure == MS_FALSE)
+        {
+            printf("Error type 4 at Line %d: Redefined function \"%s\".", ms_get_interpreter()->current_line_number, yytext);
+            return;
+        }
+        p = p->next;
+    }
 
     f = (FunctionDefinition *)malloc(sizeof(FunctionDefinition));
     f->isClosure = isClosure;
@@ -51,19 +64,32 @@ void ms_create_class(char *identifier, Block *block)
     ms_get_interpreter()->class_list = c;
 }
 
-void ms_create_variable(char *name, MS_Boolean isClass, MS_Boolean isArray)
+void ms_create_variable(char *name, MS_Boolean isObject, MS_Boolean isArray)
 {
     // Search name in Variable List, if exist, error.
+    Variable *vl = ms_get_interpreter()->variable;
+    Variable *p = vl;
+
+    while (p != NULL)
+    {
+        if (strcmp(p->name, name) == 0)
+        {
+            printf("Error type 3 at Line %d: Redefined variable \"%s\".", ms_get_interpreter()->current_line_number, yytext);
+            return NULL;
+        }
+        p = p->next;
+    }
 
     Variable *v;
     v = (Variable *)malloc(Variable);
     v->isArray = isArray;
     v->isObject = isObject;
     v->next = ms_get_interpreter()->variable;
+    v->value.type = MS_NULL_VALUE;
     ms_get_interpreter()->variable = v;
 }
 
-ParameterList *ms_create_parameter(char *identifier, MS_Boolean isClass, MS_Boolean isArray)
+ParameterList *ms_create_parameter(char *identifier, MS_Boolean isObject, MS_Boolean isArray)
 {
     ParameterList *pl;
 
@@ -72,17 +98,17 @@ ParameterList *ms_create_parameter(char *identifier, MS_Boolean isClass, MS_Bool
     pl->line_number = ms_get_interpreter()->current_line_number;
     pl->next = NULL;
 
-    ms_create_variable(identifier, isClass, isArray);
+    ms_create_variable(identifier, isObject, isArray);
 
     return pl;
 }
-ParameterList *ms_chain_parameter(ParameterList *list, char *identifier)
+ParameterList *ms_chain_parameter(char *identifier, ParameterList *list)
 {
     ParameterList *pos;
 
     for (pos = list; pos->next; pos = pos->next)
         ;
-    pos->next = ms_create_parameter(identifier);
+    pos->next = ms_create_parameter(identifier, MS_FALSE, MS_FALSE);
 
     return list;
 }
@@ -147,24 +173,67 @@ Expression *ms_alloc_expression(ExpressionType type)
 }
 Expression *ms_create_assign_expression(Expression *priExp, Expression *operand)
 {
-    if (priExp->type != IDENTIFIER_EXPRESSION || priExp->type != ARRAY_EXPRESSION)
+    if (priExp->type != IDENTIFIER_EXPRESSION)
     {
         // Error type 6: The left-hand side of an assignment must be a variable.
+        printf("Error type 6 at Line %d: The left-hand side of an assignment must be a variable.", ms_get_interpreter()->current_line_number);
         return NULL;
     }
 
     if (priExp->type == IDENTIFIER)
     {
         // Find IDENTIFIER in Variable list
+        Variable *vl = ms_get_interpreter()->variable;
 
-        if (operand->type == CLASS_NEW_EXPRESSION)
+        Variable *p = vl;
+
+        while (p != NULL)
         {
-            // set a class name and isObject value
+            if (strcmp(p->name, priExp->u.identifier) == 0)
+            {
+                if (operand->type == CLASS_NEW_EXPRESSION)
+                {
+                    // set a class name and isObject value
+                }
+
+                if ((operand->type == INT_EXPRESSION || operand->type == DOUBLE_EXPRESSION))
+                {
+                    // check type, if ok, give value
+                    if (p->value.type == MS_NULL_VALUE)
+                    {
+                        if (operand->type == INT_EXPRESSION)
+                        {
+                            p->value.type = MS_INT_VALUE;
+                            p->value.u.int_value = operand->u.int_value;
+                        }
+                        else
+                        {
+                            p->value.type = MS_DOUBLE_VALUE;
+                            p->value.u.double_value = operand->u.double_value;
+                        }
+                    }
+                    if (p->value.type == MS_INT_VALUE && operand->type == INT_EXPRESSION)
+                    {
+                        p->value.u.int_value = operand->u.int_value;
+                    }
+                    else if (p->value.type == MS_DOUBLE_VALUE && operand->type == DOUBLE_EXPRESSION)
+                    {
+                        p->value.u.double_value = operand->u.double_value;
+                    }
+                    else
+                    {
+                        printf("Error type 5 at Line %d: Type missmatched for assignment.", ms_get_interpreter()->current_line_number);
+                        return NULL;
+                    }
+                }
+                break;
+            }
+            p = p->next;
         }
 
-        if ((operand->type == INT_EXPRESSION || operand->type == DOUBLE_EXPRESSION))
+        if (p == NULL)
         {
-            // check type, if ok, give value
+            printf("Error type 1 at Line %d: Undefined variable \"%s\".", ms_get_interpreter()->current_line_number, yytext);
         }
     }
 
@@ -224,9 +293,11 @@ Expression *ms_create_binary_expression(ExpressionType operator, Expression *lef
     // else
     // {
 
-    if (letf->type != right->type)
+    if (left->type != right->type)
     {
         // Error type 7: Type mismatched for operands.
+        printf("Error type 7 at Line %d: Type mismatched for operands.", ms_get_interpreter()->current_line_number);
+        return;
     }
 
     Expression *exp;
@@ -258,6 +329,58 @@ Expression *ms_create_identifier_expression(char *identifier)
 }
 Expression *ms_create_function_call_expression(char *func_name, ArgumentList *argument)
 {
+    FunctionDefinition *fd = ms_get_interpreter()->function_list;
+    FunctionDefinition *p = fd;
+
+    while (p != NULL)
+    {
+        if (strcmp(p->name, func_name) == 0)
+        {
+            break;
+        }
+        p = p->next;
+    }
+    if (p == NULL)
+    {
+        Variable *vl = ms_get_interpreter()->variable;
+        Variable *v = vl;
+        while (v != NULL)
+        {
+            if (strcmp(v->name, func_name) == 0)
+            {
+                break;
+            }
+            v = v->next;
+        }
+        if (v != NULL)
+        {
+            printf("Error type 11 at Line %d: \"%s\" is not a function.", ms_get_interpreter()->current_line_number, yytext);
+        }
+        else
+        {
+            printf("Error type 2 at Line %d: Undefined function \"%s\".", ms_get_interpreter()->current_line_number, yytext);
+        }
+
+        return NULL;
+    }
+    ArgumentList *al = argument;
+    ParameterList *pl = p->parameter;
+    int pn = 0;
+    int an = 0;
+    while (pl != NULL)
+    {
+        pl = pl->next;
+    }
+    while (al != NULL)
+    {
+        al = al->next;
+    }
+    if (pn != an)
+    {
+        printf("Error type 9 at Line %d: Function \"%s\" is not applicable for arguments.", ms_get_interpreter()->current_line_number, yytext);
+        return NULL;
+    }
+
     Expression *exp;
 
     exp = ms_alloc_expression(FUNCTION_CALL_EXPRESSION);
@@ -265,6 +388,39 @@ Expression *ms_create_function_call_expression(char *func_name, ArgumentList *ar
     exp->u.function_call_expression.argument = argument;
 
     return exp;
+}
+
+Expression *ms_create_array_use_expression(char *identifier, Expression *priExp)
+{
+    if (priExp->type != INT_EXPRESSION)
+    {
+        printf("Error type 12 at Line %d: \"%s\" is not an integer.", ms_get_interpreter()->current_line_number, yytext);
+    }
+    Variable *vl = ms_get_interpreter()->variable;
+    Variable *p = vl;
+    while (p != NULL)
+    {
+        if (strcmp(p->name, identifier) == 0)
+        {
+            break;
+        }
+        p = p->next;
+    }
+    if (p == NULL)
+    {
+        printf("Error type 1 at Line %d: Undefined variable \"%s\".", ms_get_interpreter()->current_line_number, yytext);
+        return NULL;
+    }
+    else
+    {
+        if (p->isArray == MS_FALSE)
+        {
+            printf("Error type 10 at Line %d: \"%s\" is not an array.", ms_get_interpreter()->current_line_number, yytext);
+            return NULL;
+        }
+    }
+
+    return ms_create_identifier_expression(identifier);
 }
 Expression *ms_create_class_use_expression(char *class_name, char *member)
 {
@@ -308,17 +464,6 @@ Expression *ms_create_closure_definition(ParameterList *parameter_list, Block *b
 
     exp = ms_alloc_expression(CLOSURE_EXPRESSION);
     exp->u.closure.function_definition = ms_create_function(MS_TRUE, NULL, parameter_list, block);
-
-    return exp;
-}
-Expression *ms_create_array_expression(char *identifier, int length, ArrayExpression arrExp)
-{
-    Expression *exp;
-
-    exp = ms_alloc_expression(ARRAY_EXPRESSION);
-    exp->u.array_literal.identifier = identifier;
-    exp->u.array_literal.length = length;
-    exp->u.array_literal.next = arrExp;
 
     return exp;
 }
