@@ -195,6 +195,22 @@ Expression *ms_create_assign_expression(Expression *priExp, Expression *operand)
         return NULL;
     }
 
+    if (operand->type == CLASS_NEW_EXPRESSION)
+    {
+        Variable *vl = ms_get_interpreter()->variable;
+        Variable *p = vl;
+
+        while (p != NULL)
+        {
+            if (strcmp(p->name, priExp->u.identifier) == 0)
+            {
+                break;
+            }
+            p = p->next;
+        }
+        p->isObject = MS_TRUE;
+    }
+
     Expression *exp;
 
     exp = ms_alloc_expression(ASSIGN_EXPRESSION);
@@ -226,7 +242,7 @@ Expression convert_value_to_expression(MS_Value *v)
 }
 Expression *ms_create_binary_expression(ExpressionType operator, Expression *left, Expression *right)
 {
-    if (left->type != right->type)
+    if (left->type != right->type && left->type != CLASS_USE_EXPRESSION)
     {
         printf("Error type 7 at Line %d: Type mismatched for operands.\n", ms_get_interpreter()->current_line_number);
         return NULL;
