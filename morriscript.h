@@ -392,16 +392,16 @@ void ms_traverse_statement(Statement *statement, int blank);
 void ms_traverse_block(Block *block, int blank);
 void ms_traverse_elsif(Elsif *elsif, int blank);
 void ms_traverse_identifier_list(IdentifierList *idList, int blank);
-void ms_traverse_assign_expression(AssignExpression asnExp, int blank);
+void ms_traverse_assign_expression(Expression *exp, int blank);
 void ms_traverse_binary_expression(BinaryExpression binExp, int blank);
-void ms_traverse_function_call_expression(FunctionCallExpression funcCall, int blank);
+void ms_traverse_function_call_expression(Expression *exp, int blank);
 void ms_traverse_if_statement(IfStatement ifStmt, int blank);
 void ms_traverse_while_statement(WhileStatement whileStmt, int blank);
 void ms_traverse_for_statement(ForStatement forStmt, int blank);
 void ms_traverse_return_statement(ReturnStatement returnStmt, int blank);
-void ms_traverse_array_use_expression(ArrayUseExpression arrUse, int blank);
-void ms_traverse_class_new_expression(ClassNewExpression cnExp, int blank);
-void ms_traverse_class_use_expression(ClassUseExpression cuExp, int blank);
+void ms_traverse_array_use_expression(Expression *exp, int blank);
+void ms_traverse_class_new_expression(Expression *exp, int blank);
+void ms_traverse_class_use_expression(Expression *exp, int blank);
 void create_blank(int blank);
 
 #endif /* PRIVATE_CROWBAR_H_INCLUDED */

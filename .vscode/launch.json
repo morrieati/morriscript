@@ -7,7 +7,7 @@
             "request": "launch",
             "program": "${workspaceRoot}/ms",
             "args": [
-                "test/2/13.ms"
+                "test/2/01.ms"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceRoot}",

@@ -1,5 +1,4 @@
 #include "morriscript.h"
-extern char *yytext;
 
 MS_Interpreter *ms_get_interpreter()
 {
@@ -37,7 +36,7 @@ void ms_create_function(MS_Boolean isClosure, char *identifier, ParameterList *p
     {
         if (strcmp(p->name, identifier) == 0 && isClosure == MS_FALSE)
         {
-            printf("Error type 4 at Line %d: Redefined function \"%s\".\n", ms_get_interpreter()->current_line_number, yytext);
+            printf("Error type 4 at Line %d: Redefined function \"%s\".\n", ms_get_interpreter()->current_line_number, identifier);
             return;
         }
         p = p->next;
@@ -89,7 +88,7 @@ void ms_create_variable(char *name, MS_Boolean isObject, MS_Boolean isArray)
     {
         if (strcmp(p->name, name) == 0)
         {
-            printf("Error type 3 at Line %d: Redefined variable \"%s\".\n", ms_get_interpreter()->current_line_number, yytext);
+            printf("Error type 3 at Line %d: Redefined variable \"%s\".\n", ms_get_interpreter()->current_line_number, name);
             return;
         }
         p = p->next;
@@ -195,7 +194,7 @@ Expression *ms_create_assign_expression(Expression *priExp, Expression *operand)
         return NULL;
     }
 
-    if (operand->type == CLASS_NEW_EXPRESSION)
+    if (operand && operand->type == CLASS_NEW_EXPRESSION)
     {
         Variable *vl = ms_get_interpreter()->variable;
         Variable *p = vl;
@@ -242,7 +241,7 @@ Expression convert_value_to_expression(MS_Value *v)
 }
 Expression *ms_create_binary_expression(ExpressionType operator, Expression *left, Expression *right)
 {
-    if (left->type != right->type && left->type != CLASS_USE_EXPRESSION)
+    if (left->type != right->type && left->type != IDENTIFIER_EXPRESSION && left->type != CLASS_USE_EXPRESSION)
     {
         printf("Error type 7 at Line %d: Type mismatched for operands.\n", ms_get_interpreter()->current_line_number);
         return NULL;
@@ -289,7 +288,7 @@ Expression *ms_create_array_use_expression(char *identifier, Expression *priExp)
 {
     if (priExp->type != INT_EXPRESSION)
     {
-        printf("Error type 12 at Line %d: \"%s\" is not an integer.\n", ms_get_interpreter()->current_line_number, yytext);
+        printf("Error type 12 at Line %d: \"%s\" is not an integer.\n", ms_get_interpreter()->current_line_number, identifier);
     }
 
     Expression *exp;
